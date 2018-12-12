@@ -1,0 +1,7 @@
+/target
+Cargo.lock
+
+# Including as a module allows racer to provide completions. It is also slightly
+# easier to find the source because its not in
+# target/debug/build/lib-hash/out/bindings.rs or something.
+/src/bindings.rs
