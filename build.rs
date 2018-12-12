@@ -1,14 +1,11 @@
 extern crate bindgen;
+extern crate cmake;
 
 use std::env;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 
-fn main() {
-    let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    println!("cargo:rustc-link-search=native={}", Path::new(&dir).join("openvr/lib/linux64").display());
-    println!("cargo:rustc-link-lib=openvr_api");
-
+fn generate_bindings() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
@@ -50,6 +47,10 @@ fn main() {
         .layout_tests(false)
         .prepend_enum_name(false)
         .enable_cxx_namespaces()
+        // NOTE(mickvangelderen): We want bindgen to emit align(N)
+        // attributes. Alternatively we could provide 4 definitions
+        // manually.
+        .rust_target(bindgen::RustTarget::Nightly)
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
@@ -67,4 +68,23 @@ fn main() {
     bindings
         .write_to_file(out_path.join("src/bindings.rs"))
         .expect("Couldn't write bindings!");
+}
+
+fn build_openvr() {
+    let dst = cmake::Config::new("openvr").build();
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("lib").display()
+    );
+
+    #[cfg(all(windows, target_pointer_width = "64"))]
+    println!("cargo:rustc-link-lib=static=openvr_api64");
+
+    #[cfg(not(all(windows, target_pointer_width = "64")))]
+    println!("cargo:rustc-link-lib=static=openvr_api");
+}
+
+fn main() {
+    build_openvr();
+    generate_bindings();
 }
