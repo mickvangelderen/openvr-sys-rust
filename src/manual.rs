@@ -1,7 +1,7 @@
 use super::bindings::*;
 
 #[repr(C)]
-#[cfg_attr(any(target_os = "linux", target_os = "osx"), repr(align(4)))]
+#[cfg_attr(unix, repr(align(4)))]
 pub struct VREvent_t {
     pub eventType: u32,
     pub trackedDeviceIndex: TrackedDeviceIndex_t,
@@ -10,7 +10,7 @@ pub struct VREvent_t {
 }
 
 #[repr(C)]
-#[cfg_attr(any(target_os = "linux", target_os = "osx"), repr(align(4)))]
+#[cfg_attr(unix, repr(align(4)))]
 pub struct VRControllerState001_t {
     /// If packet num matches that on your prior call, then the controller state hasn't been changed since
     /// your last call and there is no need to process it
@@ -25,7 +25,7 @@ pub struct VRControllerState001_t {
 }
 
 #[repr(C)]
-#[cfg_attr(any(target_os = "linux", target_os = "osx"), repr(align(4)))]
+#[cfg_attr(unix, repr(align(4)))]
 pub struct RenderModel_TextureMap_t {
     pub unWidth: u16,
     pub unHeight: u16,
@@ -33,7 +33,7 @@ pub struct RenderModel_TextureMap_t {
 }
 
 #[repr(C)]
-#[cfg_attr(any(target_os = "linux", target_os = "osx"), repr(align(4)))]
+#[cfg_attr(unix, repr(align(4)))]
 pub struct RenderModel_t {
     pub rVertexData: *const RenderModel_Vertex_t,
     pub unVertexCount: u32,
