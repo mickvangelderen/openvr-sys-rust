@@ -12,7 +12,6 @@ fn generate_bindings() {
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
-        .raw_line("use super::manual::*;")
         // Blacklist these deprecated types.
         .blacklist_item("HmdError")
         .blacklist_item("Hmd_Eye")
@@ -46,16 +45,9 @@ fn generate_bindings() {
         .expect("Unable to generate bindings");
 
     // Write the bindings to the $OUT_DIR/bindings.rs file.
-    // let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    // bindings
-    //     .write_to_file(out_path.join("bindings.rs"))
-    //     .expect("Couldn't write bindings!");
-
-    // NOTE(mickvangelderen): The improper way to do this so we get
-    // racer completion and easier to inspect the generated src.
-    let out_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
-        .write_to_file(out_path.join("src/bindings.rs"))
+        .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 }
 
