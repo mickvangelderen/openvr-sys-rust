@@ -51,17 +51,31 @@ fn generate_bindings() {
         .expect("Couldn't write bindings!");
 }
 
-fn build_openvr() {
-    let dst = cmake::Config::new("openvr").build();
+fn link_openvr() {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+
+    #[cfg(target_os = "linux")]
+    let os = "linux";
+
+    #[cfg(target_os = "macos")]
+    let os = "osx";
+
+    #[cfg(target_os = "windows")]
+    let os = "win";
+
+    #[cfg(target_pointer_width = "32")]
+    let pw = "32";
+
+    #[cfg(target_pointer_width = "64")]
+    let pw = "64";
+
+    let ospw = format!("{}{}", os, pw);
+
     println!(
         "cargo:rustc-link-search=native={}",
-        dst.join("lib").display()
+        [manifest_dir.as_path(), "openvr".as_ref(), "lib".as_ref(), ospw.as_ref()].iter().collect::<PathBuf>().display()
     );
 
-    #[cfg(all(windows, target_pointer_width = "64"))]
-    println!("cargo:rustc-link-lib=static=openvr_api64");
-
-    #[cfg(not(all(windows, target_pointer_width = "64")))]
     println!("cargo:rustc-link-lib=static=openvr_api");
 
     #[cfg(target_os="linux")]
@@ -72,6 +86,6 @@ fn build_openvr() {
 }
 
 fn main() {
-    build_openvr();
+    link_openvr();
     generate_bindings();
 }

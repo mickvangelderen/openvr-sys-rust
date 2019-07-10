@@ -3,6 +3,7 @@ name = "openvr-sys"
 version = "0.1.0"
 authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
 edition = "2018"
+links = "openvr_api"
 
 [dependencies]
 
