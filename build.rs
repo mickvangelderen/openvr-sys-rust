@@ -4,6 +4,66 @@ extern crate cmake;
 use std::env;
 use std::path::PathBuf;
 
+fn main() {
+    build_openvr();
+    generate_bindings();
+}
+
+const OPENVR_PATH: &str = "openvr";
+const WRAPPER_PATH: &str = "wrapper.hpp";
+
+fn build_openvr() {
+    println!("cargo:rerun-if-changed={}", OPENVR_PATH);
+    println!("cargo:rerun-if-changed={}", WRAPPER_PATH);
+
+    let target_os = TargetOs::from_str(&env::var("CARGO_CFG_TARGET_OS").unwrap());
+    let target_pointer_width =
+        TargetPointerWidth::from_str(&env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap());
+
+    let dst = {
+        let mut config = cmake::Config::new(OPENVR_PATH);
+
+        match target_os {
+            TargetOs::Linux => {}
+            TargetOs::Macos => {
+                config.define("BUILD_UNIVERSAL", "OFF");
+            }
+            TargetOs::Windows => {
+                // Build errors on #warning statements without this.
+                config.cxxflag("/DWIN32");
+            }
+        }
+
+        config.build()
+    };
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dst.join("lib").display(),
+    );
+
+    println!(
+        "cargo:rustc-link-lib={}={}",
+        match target_os {
+            TargetOs::Linux | TargetOs::Windows => "static",
+            TargetOs::Macos => "framework",
+        },
+        match target_os {
+            TargetOs::Linux | TargetOs::Macos => "openvr_api",
+            TargetOs::Windows => match target_pointer_width {
+                TargetPointerWidth::W32 => "openvr_api",
+                TargetPointerWidth::W64 => "openvr_api64",
+            },
+        }
+    );
+
+    match target_os {
+        TargetOs::Linux => println!("cargo:rustc-link-lib=stdc++"),
+        TargetOs::Macos => println!("cargo:rustc-link-lib=c++"),
+        TargetOs::Windows => println!("cargo:rustc-link-lib=shell32"),
+    }
+}
+
 fn generate_bindings() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -11,7 +71,7 @@ fn generate_bindings() {
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("wrapper.h")
+        .header(WRAPPER_PATH)
         // Blacklist these deprecated types.
         .blacklist_item("HmdError")
         .blacklist_item("Hmd_Eye")
@@ -81,56 +141,4 @@ impl TargetPointerWidth {
             _ => unimplemented!(),
         }
     }
-}
-
-fn link_openvr() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let target_os = TargetOs::from_str(&env::var("CARGO_CFG_TARGET_OS").unwrap());
-    let target_pointer_width =
-        TargetPointerWidth::from_str(&env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap());
-
-    println!(
-        "cargo:rustc-link-search=native={}",
-        [
-            manifest_dir.as_path(),
-            "openvr".as_ref(),
-            match target_os {
-                TargetOs::Linux => "bin",
-                TargetOs::Macos | TargetOs::Windows => "lib",
-            }
-            .as_ref(),
-            format!(
-                "{}{}",
-                match target_os {
-                    TargetOs::Linux => "linux",
-                    TargetOs::Macos => "macos",
-                    TargetOs::Windows => "win",
-                },
-                match target_pointer_width {
-                    TargetPointerWidth::W32 => "32",
-                    TargetPointerWidth::W64 => "64",
-                }
-            )
-            .as_ref()
-        ]
-        .iter()
-        .collect::<PathBuf>()
-        .display()
-    );
-
-    match target_os {
-        TargetOs::Linux | TargetOs::Windows => println!("cargo:rustc-link-lib=static=openvr_api"),
-        TargetOs::Macos => println!("cargo:rustc-link-lib=framework=openvr_api"),
-    }
-
-    match target_os {
-        TargetOs::Linux => println!("cargo:rustc-link-lib=stdc++"),
-        TargetOs::Macos => println!("cargo:rustc-link-lib=c++"),
-        TargetOs::Windows => println!("cargo:rustc-link-lib=shell32"),
-    }
-}
-
-fn main() {
-    link_openvr();
-    generate_bindings();
 }
