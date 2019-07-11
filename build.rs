@@ -51,38 +51,83 @@ fn generate_bindings() {
         .expect("Couldn't write bindings!");
 }
 
+enum TargetOs {
+    Linux,
+    Macos,
+    Windows,
+}
+
+impl TargetOs {
+    fn from_str(s: &str) -> Self {
+        match s {
+            "linux" => Self::Linux,
+            "macos" => Self::Macos,
+            "windows" => Self::Windows,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+enum TargetPointerWidth {
+    W32,
+    W64,
+}
+
+impl TargetPointerWidth {
+    fn from_str(s: &str) -> Self {
+        match s {
+            "32" => Self::W32,
+            "64" => Self::W64,
+            _ => unimplemented!(),
+        }
+    }
+}
+
 fn link_openvr() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-
-    #[cfg(target_os = "linux")]
-    let os = "linux";
-
-    #[cfg(target_os = "macos")]
-    let os = "osx";
-
-    #[cfg(target_os = "windows")]
-    let os = "win";
-
-    #[cfg(target_pointer_width = "32")]
-    let pw = "32";
-
-    #[cfg(target_pointer_width = "64")]
-    let pw = "64";
-
-    let ospw = format!("{}{}", os, pw);
+    let target_os = TargetOs::from_str(&env::var("CARGO_CFG_TARGET_OS").unwrap());
+    let target_pointer_width =
+        TargetPointerWidth::from_str(&env::var("CARGO_CFG_TARGET_POINTER_WIDTH").unwrap());
 
     println!(
         "cargo:rustc-link-search=native={}",
-        [manifest_dir.as_path(), "openvr".as_ref(), "lib".as_ref(), ospw.as_ref()].iter().collect::<PathBuf>().display()
+        [
+            manifest_dir.as_path(),
+            "openvr".as_ref(),
+            match target_os {
+                TargetOs::Linux => "bin",
+                TargetOs::Macos | TargetOs::Windows => "lib",
+            }
+            .as_ref(),
+            format!(
+                "{}{}",
+                match target_os {
+                    TargetOs::Linux => "linux",
+                    TargetOs::Macos => "macos",
+                    TargetOs::Windows => "win",
+                },
+                match target_pointer_width {
+                    TargetPointerWidth::W32 => "32",
+                    TargetPointerWidth::W64 => "64",
+                }
+            )
+            .as_ref()
+        ]
+        .iter()
+        .collect::<PathBuf>()
+        .display()
     );
 
-    println!("cargo:rustc-link-lib=static=openvr_api");
+    match target_os {
+        TargetOs::Linux | TargetOs::Windows => println!("cargo:rustc-link-lib=static=openvr_api"),
+        TargetOs::Macos => println!("cargo:rustc-link-lib=framework=openvr_api"),
+    }
 
-    #[cfg(target_os="linux")]
-    println!("cargo:rustc-link-lib=stdc++");
-
-    #[cfg(target_os="macos")]
-    println!("cargo:rustc-link-lib=c++");
+    match target_os {
+        TargetOs::Linux => println!("cargo:rustc-link-lib=stdc++"),
+        TargetOs::Macos => println!("cargo:rustc-link-lib=c++"),
+        TargetOs::Windows => println!("cargo:rustc-link-lib=shell32"),
+    }
 }
 
 fn main() {
